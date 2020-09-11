@@ -26,3 +26,4 @@ class Obstacle:
         self.edges = [(self.corners[i], self.corners[(i + 1) % 4]) for i in range(4)]
 
 
+

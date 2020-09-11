@@ -2,7 +2,9 @@ import sys
 
 from problem_spec import ProblemSpec
 from robot_config import write_robot_config_list_to_file
-from tester import test_config_equality
+from tester import *
+from visualiser import Visualiser
+import random
 
 """
 Template file for you to implement your solution to Assignment 2. Contains a class you can use to represent graph nodes,
@@ -30,6 +32,7 @@ class GraphNode:
         self.spec = spec
         self.config = config
         self.neighbors = []
+        self.obstacles = spec.obstacles
 
     def __eq__(self, other):
         return test_config_equality(self.config, other.config, self.spec)
@@ -50,6 +53,59 @@ class GraphNode:
         """
         n1.neighbors.append(n2)
         n2.neighbors.append(n1)
+
+    def sample_random_valid_nodes(self, n):
+        """
+        A method which sample random valid nodes on the c-space.
+        :param n: number of random nodes
+        :return: returns a list of nodes which do not interfere with obstacles
+        """
+
+        all_nodes = []
+
+        while n > 0:
+            node_x = round(random.random(), 1)
+            node_y = round(random.random(), 1)
+            a = node_x, node_y
+
+            success = 0
+            for obstacle in self.obstacles:
+                if obstacle.x1 <= node_x <= obstacle.x2 and obstacle.y1 <= node_y <= obstacle.y2:
+                    pass
+                else:
+                    success += 1
+
+            if success == 2:
+                all_nodes.append(a)
+                n -= 1
+                success = 0
+
+        return all_nodes
+
+
+
+
+
+
+    def plan(self, n, k):
+        """
+        A method which samples random nodes on the C-Space to find collision free
+        points.
+        :param n: number of random sample points
+        :param k: number of closest neigbour points
+        :return: a roadmap G(V, E) where V is a spec and E, a config
+        """
+
+        while True:
+            for i in range(n):
+                sample = self.sample_random_valid_nodes()
+                node = GraphNode()
+
+
+
+
+
+
 
 
 def find_graph_path(spec, init_node):
@@ -88,9 +144,10 @@ def find_graph_path(spec, init_node):
 
 
 def main(arglist):
-    input_file = arglist[0]
-    output_file = arglist[1]
-
+    # input_file = arglist[0]
+    # output_file = arglist[1]
+    input_file = "testcases/3g1_m1.txt"
+    output_file = "example_output.txt"
     spec = ProblemSpec(input_file)
 
     init_node = GraphNode(spec, spec.initial)
@@ -108,14 +165,18 @@ def main(arglist):
     #
     #
 
-    if len(arglist) > 1:
-        write_robot_config_list_to_file(output_file, steps)
+    # if len(arglist) > 1:
+    #     write_robot_config_list_to_file(output_file, steps)
+
+    g = GraphNode(spec, spec.goal)
+    print(g.sample_random_valid_nodes())
+
 
     #
     # You may uncomment this line to launch visualiser once a solution has been found. This may be useful for debugging.
     # *** Make sure this line is commented out when you submit to Gradescope ***
     #
-    #v = Visualiser(spec, steps)
+    # v = Visualiser(spec, steps)
 
 
 if __name__ == '__main__':
