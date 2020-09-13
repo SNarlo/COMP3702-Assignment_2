@@ -5,7 +5,7 @@ from robot_config import write_robot_config_list_to_file
 from tester import *
 from visualiser import Visualiser
 import random
-
+import matplotlib.pyplot as pyplot
 """
 Template file for you to implement your solution to Assignment 2. Contains a class you can use to represent graph nodes,
 and a method for finding a path in a graph made up of GraphNode objects.
@@ -54,55 +54,46 @@ class GraphNode:
         n1.neighbors.append(n2)
         n2.neighbors.append(n1)
 
-    def sample_random_valid_nodes(self, n):
+
+    def dist_between(self, node, other_node):
+
+        distance = abs(node[0] - other_node[0])
+        distance += abs(node[1] - other_node[1])
+
+        return distance
+
+    def generate_sample(self):
         """
-        A method which sample random valid nodes on the c-space.
-        :param n: number of random nodes
-        :return: returns a list of nodes which do not interfere with obstacles
+        Generating a random robot configuration
+        :return: A robot configuration which is collision free
         """
 
-        all_nodes = []
+        rand_x = round(random.random(), 2)
+        rand_y = round(random.random(), 2)
+        rand_angles = Angle(random.uniform(-180, 180)), Angle(random.uniform(-180, 180)), Angle(
+            random.uniform(-180, 180))
+        # rand_lengths = (random.uniform(0, 1)), (random.uniform(0, 1)), (random.uniform(0, 1))
 
-        while n > 0:
-            node_x = round(random.random(), 1)
-            node_y = round(random.random(), 1)
-            a = node_x, node_y
+        random_config = make_robot_config_from_ee1(rand_x, rand_y, rand_angles, self.config.lengths, False, False)
+        test = test_obstacle_collision(random_config, self.spec, self.obstacles)
 
-            success = 0
-            for obstacle in self.obstacles:
-                if obstacle.x1 <= node_x <= obstacle.x2 and obstacle.y1 <= node_y <= obstacle.y2:
-                    pass
-                else:
-                    success += 1
-
-            if success == 2:
-                all_nodes.append(a)
-                n -= 1
-                success = 0
-
-        return all_nodes
+        if test:
+            return random_config
+        else:
+            return self.generate_sample()
 
 
-
-
-
-
-    def plan(self, n, k):
+    def graph(self, n, k):
         """
-        A method which samples random nodes on the C-Space to find collision free
-        points.
+
         :param n: number of random sample points
         :param k: number of closest neigbour points
         :return: a roadmap G(V, E) where V is a spec and E, a config
         """
 
-        while True:
-            for i in range(n):
-                sample = self.sample_random_valid_nodes()
-                node = GraphNode()
-
-
-
+        start_node = GraphNode(self.spec, self.spec.initial)
+        goal_node = GraphNode(self.spec, self.spec.goal)
+        state_graph = []
 
 
 
@@ -165,19 +156,19 @@ def main(arglist):
     #
     #
 
-    # if len(arglist) > 1:
-    #     write_robot_config_list_to_file(output_file, steps)
+    if len(arglist) > 1:
+        write_robot_config_list_to_file(output_file, steps)
 
     g = GraphNode(spec, spec.goal)
-    print(g.sample_random_valid_nodes())
-
+    
+    a = g.generate_sample()
+    print(a)
 
     #
     # You may uncomment this line to launch visualiser once a solution has been found. This may be useful for debugging.
     # *** Make sure this line is commented out when you submit to Gradescope ***
     #
     # v = Visualiser(spec, steps)
-
 
 if __name__ == '__main__':
     main(sys.argv[1:])
