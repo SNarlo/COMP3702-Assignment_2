@@ -55,12 +55,6 @@ class GraphNode:
         n2.neighbors.append(n1)
 
 
-    def dist_between(self, node, other_node):
-
-        distance = abs(node[0] - other_node[0])
-        distance += abs(node[1] - other_node[1])
-
-        return distance
 
     def generate_sample(self):
         """
@@ -70,17 +64,34 @@ class GraphNode:
 
         rand_x = round(random.random(), 2)
         rand_y = round(random.random(), 2)
-        rand_angles = Angle(random.uniform(-180, 180)), Angle(random.uniform(-180, 180)), Angle(
-            random.uniform(-180, 180))
-        # rand_lengths = (random.uniform(0, 1)), (random.uniform(0, 1)), (random.uniform(0, 1))
+        rand_angles = Angle(random.uniform(0, 2 * math.pi)), Angle(random.uniform(0, 2 * math.pi)), \
+                      Angle(random.uniform(0, 2 * math.pi))
+        rand_lengths = (random.uniform(0, 1)), (random.uniform(0, 1)), (random.uniform(0, 1))
 
-        random_config = make_robot_config_from_ee1(rand_x, rand_y, rand_angles, self.config.lengths, False, False)
+        random_config = make_robot_config_from_ee1(self.config.points[0][0], self.config.points[0][1], rand_angles,
+                                                   rand_lengths, False, False)
+
+     
+
         test = test_obstacle_collision(random_config, self.spec, self.obstacles)
 
         if test:
             return random_config
         else:
             return self.generate_sample()
+
+    def interpolate_path(self, config1, config2):
+
+        successful_nodes = [config1]
+
+        i = 0
+        while i < 2:
+            new = self.generate_sample()
+            print(new)
+            if test_config_distance(successful_nodes[i], new, self.spec):
+                successful_nodes.append(new)
+                i += 1
+        return successful_nodes
 
 
     def graph(self, n, k):
@@ -160,8 +171,11 @@ def main(arglist):
         write_robot_config_list_to_file(output_file, steps)
 
     g = GraphNode(spec, spec.goal)
-    
-    a = g.generate_sample()
+
+    c1 = g.generate_sample()
+    c2 = g.generate_sample()
+
+    a = g.interpolate_path(c1, c2)
     print(a)
 
     #
@@ -169,6 +183,7 @@ def main(arglist):
     # *** Make sure this line is commented out when you submit to Gradescope ***
     #
     # v = Visualiser(spec, steps)
+
 
 if __name__ == '__main__':
     main(sys.argv[1:])
