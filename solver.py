@@ -127,6 +127,44 @@ class GraphNode:
 
         return new_config
 
+    def initial_difference(self):
+        initial_angles = self.spec.initial.ee1_angles
+        goal_angles = self.spec.goal.ee1_angles
+        difference = []
+        for i in range(len(initial_angles)):
+            difference.append(initial_angles[i] - goal_angles[i])
+        return tuple(difference)
+
+    def current_difference(self, current, goal):
+        current_angles = current.ee1_angles
+        goal_angles = goal.ee1_angles
+        difference = []
+        for i in range(len(current_angles)):
+            difference.append(current_angles[i] - goal_angles[i])
+        return tuple(difference)
+
+    def closer(self, current, goal):
+
+        total_difference = self.initial_difference()
+        new_difference = self.current_difference(current, goal)
+        all_closer = [0, 0, 0]
+
+        for i in range(len(total_difference)):
+            if total_difference[i] < 0:
+                if new_difference[i] > total_difference[i]:
+                    all_closer[i] = 1
+                else:
+                    all_closer[i] = 0
+
+            elif total_difference[i] > 0:
+                if new_difference[i] < total_difference[i]:
+                    all_closer[i] = 1
+                else:
+                    all_closer[i] = 0
+
+        return all_closer == [1, 1, 1]
+
+
     def interpolate_path(self, config1, config2):
 
         successful_nodes = [config1]
@@ -134,11 +172,12 @@ class GraphNode:
         i = 0
         while successful_nodes[i].points != config2.points:
             new = self.generate_intermediate_sample(successful_nodes[i])
-            test = test_config_distance(successful_nodes[i], new, self.spec)
             print(new)
-            if test:
+            test = test_config_distance(new, successful_nodes[i], self.spec)
+            if test and self.closer(new, config2):
                 successful_nodes.append(new)
                 i += 1
+        successful_nodes.append(config2)
         return successful_nodes
 
 
