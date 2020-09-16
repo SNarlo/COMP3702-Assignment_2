@@ -98,7 +98,24 @@ class GraphNode:
         else:
             return self.generate_sample()
 
-    def plus_or_minus(self, value, other_value):
+    def initial_difference(self):
+        initial_angles = self.spec.initial.ee1_angles
+        goal_angles = self.spec.goal.ee1_angles
+        difference = []
+        for i in range(len(initial_angles)):
+            difference.append(initial_angles[i] - goal_angles[i])
+        return tuple(difference)
+
+    def current_difference(self, current, goal):
+        current_angles = current.ee1_angles
+        goal_angles = goal.ee1_angles
+        difference = []
+        for i in range(len(current_angles)):
+            difference.append(current_angles[i] - goal_angles[i])
+        return tuple(difference)
+    
+    
+    def plus_or_minus(self, value, other_value): #TODO Fix random, make it so it goes up or down depending on difference
 
         plus_minus = random.randint(0, 1)
 
@@ -126,22 +143,6 @@ class GraphNode:
                                                 original_ee1_grappled, original_ee2_grappled)
 
         return new_config
-
-    def initial_difference(self):
-        initial_angles = self.spec.initial.ee1_angles
-        goal_angles = self.spec.goal.ee1_angles
-        difference = []
-        for i in range(len(initial_angles)):
-            difference.append(initial_angles[i] - goal_angles[i])
-        return tuple(difference)
-
-    def current_difference(self, current, goal):
-        current_angles = current.ee1_angles
-        goal_angles = goal.ee1_angles
-        difference = []
-        for i in range(len(current_angles)):
-            difference.append(current_angles[i] - goal_angles[i])
-        return tuple(difference)
 
     def closer(self, current, goal):
 
@@ -171,12 +172,13 @@ class GraphNode:
 
         i = 0
         while successful_nodes[i].points != config2.points:
-            new = self.generate_intermediate_sample(successful_nodes[i])
-            print(new)
-            test = test_config_distance(new, successful_nodes[i], self.spec)
-            if test and self.closer(new, config2):
-                successful_nodes.append(new)
-                i += 1
+            new = self.generate_intermediate_sample(successful_nodes[i]) # TODO Fix this
+            if self.closer(new, config2):
+                test = test_config_distance(new, successful_nodes[i], self.spec)
+                if test:
+                    print(new)
+                    successful_nodes.append(new)
+                    i += 1
         successful_nodes.append(config2)
         return successful_nodes
 
