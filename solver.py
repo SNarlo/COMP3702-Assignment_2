@@ -124,7 +124,7 @@ class GraphNode:
         else:
             return value - other_value
         
-    def generate_intermediate_sample(self, config):
+    def generate_intermediate_sample(self, config): # TODO Maybe generate steps which are only closer, if they are at the goal, make the angle fixed
 
         original_x = config.points[0][0]
         original_y = config.points[0][1]
@@ -193,9 +193,6 @@ class GraphNode:
         start_node = GraphNode(self.spec, self.spec.initial)
         goal_node = GraphNode(self.spec, self.spec.goal)
         state_graph = []
-
-
-
 
 
 def find_graph_path(spec, init_node):
