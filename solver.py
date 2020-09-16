@@ -83,8 +83,8 @@ class GraphNode:
         Generating a random robot configuration which is collision free
         :return: A robot configuration which is collision free
         """
-        rand_x = round(random.random(), 2)
-        rand_y = round(random.random(), 2)
+        # rand_x = round(random.random(), 2)
+        # rand_y = round(random.random(), 2)
         rand_angles = self.generate_random_angles()
         rand_lengths = self.generate_random_lengths()
 
@@ -98,15 +98,44 @@ class GraphNode:
         else:
             return self.generate_sample()
 
+    def plus_or_minus(self, value, other_value):
+
+        plus_minus = random.randint(0, 1)
+
+        if plus_minus == 0:
+            return value + other_value
+        else:
+            return value - other_value
+        
+    def generate_intermediate_sample(self, config):
+
+        original_x = config.points[0][0]
+        original_y = config.points[0][1]
+        original_angles = config.ee1_angles
+        original_lengths = config.lengths
+        original_ee1_grappled = config.ee1_grappled
+        original_ee2_grappled = config.ee2_grappled
+
+        primitive = self.spec.PRIMITIVE_STEP
+        new_angles = []
+        for i in range(len(original_angles)):
+            new_angles.append(self.plus_or_minus(original_angles[i], primitive))
+        tuple(new_angles)
+
+        new_config = make_robot_config_from_ee1(original_x, original_y, new_angles, original_lengths,
+                                                original_ee1_grappled, original_ee2_grappled)
+
+        return new_config
+
     def interpolate_path(self, config1, config2):
 
         successful_nodes = [config1]
 
         i = 0
-        while i < 2:
-            new = self.generate_sample()
-            test = test_config_distance(new, successful_nodes[i], self.spec)
-            print(test)
+        while successful_nodes[i].points != config2.points:
+            new = self.generate_intermediate_sample(successful_nodes[i])
+            test = test_config_distance(successful_nodes[i], new, self.spec)
+            print(new)
             if test:
                 successful_nodes.append(new)
                 i += 1
@@ -166,8 +195,8 @@ def find_graph_path(spec, init_node):
 def main(arglist):
     # input_file = arglist[0]
     # output_file = arglist[1]
-    input_file = "testcases/4g1_m1.txt"
-    output_file = "example_output.txt"
+    input_file = "testcases/3g1_m0.txt"
+    output_file = "testcases/example_output.txt"
     spec = ProblemSpec(input_file)
 
     init_node = GraphNode(spec, spec.initial)
@@ -190,8 +219,8 @@ def main(arglist):
 
     g = GraphNode(spec, spec.goal)
 
-    c1 = g.generate_sample()
-    c2 = g.generate_sample()
+    c1 = spec.initial
+    c2 = spec.goal
 
     a = g.interpolate_path(c1, c2)
     print(a)
