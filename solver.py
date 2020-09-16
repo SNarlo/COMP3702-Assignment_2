@@ -54,24 +54,42 @@ class GraphNode:
         n1.neighbors.append(n2)
         n2.neighbors.append(n1)
 
+    def generate_random_lengths(self):
+        """
+        A method which returns random lengths for each segment
+        :return: A random segment length
+        """
+        random_lengths = []
+        amount = self.spec.num_segments
+        while amount > 0:
+            random_lengths.append((random.uniform(self.spec.min_lengths[0], self.spec.max_lengths[1])))
+            amount -= 1
+        return tuple(random_lengths)
 
+    def generate_random_angles(self):
+        """
+        A method which returns a tuple of random angles in radians
+        :return: A tuple of random angles for each segment
+        """
+        random_angles = []
+        amount = self.spec.num_segments
+        while amount > 0:
+            random_angles.append(Angle(random.uniform(0, 2 * math.pi)))
+            amount -= 1
+        return tuple(random_angles)
 
     def generate_sample(self):
         """
-        Generating a random robot configuration
+        Generating a random robot configuration which is collision free
         :return: A robot configuration which is collision free
         """
-
         rand_x = round(random.random(), 2)
         rand_y = round(random.random(), 2)
-        rand_angles = Angle(random.uniform(0, 2 * math.pi)), Angle(random.uniform(0, 2 * math.pi)), \
-                      Angle(random.uniform(0, 2 * math.pi))
-        rand_lengths = (random.uniform(0, 1)), (random.uniform(0, 1)), (random.uniform(0, 1))
+        rand_angles = self.generate_random_angles()
+        rand_lengths = self.generate_random_lengths()
 
         random_config = make_robot_config_from_ee1(self.config.points[0][0], self.config.points[0][1], rand_angles,
-                                                   rand_lengths, False, False)
-
-     
+                                                   rand_lengths, self.config.ee1_grappled, self.config.ee2_grappled)
 
         test = test_obstacle_collision(random_config, self.spec, self.obstacles)
 
@@ -87,16 +105,16 @@ class GraphNode:
         i = 0
         while i < 2:
             new = self.generate_sample()
-            print(new)
-            if test_config_distance(successful_nodes[i], new, self.spec):
+            test = test_config_distance(new, successful_nodes[i], self.spec)
+            print(test)
+            if test:
                 successful_nodes.append(new)
                 i += 1
         return successful_nodes
 
 
     def graph(self, n, k):
-        """
-
+        """"
         :param n: number of random sample points
         :param k: number of closest neigbour points
         :return: a roadmap G(V, E) where V is a spec and E, a config
@@ -148,7 +166,7 @@ def find_graph_path(spec, init_node):
 def main(arglist):
     # input_file = arglist[0]
     # output_file = arglist[1]
-    input_file = "testcases/3g1_m1.txt"
+    input_file = "testcases/4g1_m1.txt"
     output_file = "example_output.txt"
     spec = ProblemSpec(input_file)
 
