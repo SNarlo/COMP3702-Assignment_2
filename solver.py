@@ -93,7 +93,7 @@ class GraphNode:
 
         test = test_obstacle_collision(random_config, self.spec, self.obstacles)
 
-        if test:
+        if test and self.self_collision_check(random_config):
             return random_config
         else:
             return self.generate_sample()
@@ -182,17 +182,21 @@ class GraphNode:
         successful_nodes.append(config2)
         return successful_nodes
 
-
-    def graph(self, n, k):
-        """"
-        :param n: number of random sample points
-        :param k: number of closest neigbour points
-        :return: a roadmap G(V, E) where V is a spec and E, a config
+    def self_collision_check(self, config): # TODO Make collision check
+        """
+        A method which checks whether any segment of the robot configuration has any
+        collisions with another segment of itself.
+        itself.
+        :param config: the robot configuration which is checked. 
+        :return: True if there is no collision, False otherwise.
         """
 
-        start_node = GraphNode(self.spec, self.spec.initial)
-        goal_node = GraphNode(self.spec, self.spec.goal)
-        state_graph = []
+        return test_self_collision(config, self.spec)
+
+
+    # def path_collision_check(self, config1, config2):
+
+
 
 
 def find_graph_path(spec, init_node):
@@ -233,14 +237,20 @@ def find_graph_path(spec, init_node):
 def main(arglist):
     # input_file = arglist[0]
     # output_file = arglist[1]
-    input_file = "testcases/3g1_m0.txt"
-    output_file = "testcases/example_output.txt"
+    input_file = "testcases/4g1_m1.txt"
+    output_file = "testcases/output.txt"
     spec = ProblemSpec(input_file)
 
     init_node = GraphNode(spec, spec.initial)
     goal_node = GraphNode(spec, spec.goal)
 
+    g = GraphNode(spec, spec.goal)
+
     steps = []
+
+    for i in range(100):
+        sample = g.generate_sample()
+        steps.append(sample)
 
     #
     #
@@ -254,20 +264,22 @@ def main(arglist):
 
     if len(arglist) > 1:
         write_robot_config_list_to_file(output_file, steps)
+        # print(steps)
 
-    g = GraphNode(spec, spec.goal)
 
-    c1 = spec.initial
-    c2 = spec.goal
 
-    a = g.interpolate_path(c1, c2)
-    print(a)
+    # c1 = spec.initial
+    # c2 = spec.goal
+    #
+    # a = g.interpolate_path(c1, c2)
+    # print(a)
+
 
     #
     # You may uncomment this line to launch visualiser once a solution has been found. This may be useful for debugging.
     # *** Make sure this line is commented out when you submit to Gradescope ***
     #
-    # v = Visualiser(spec, steps)
+    v = Visualiser(spec, steps)
 
 
 if __name__ == '__main__':
