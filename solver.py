@@ -118,10 +118,19 @@ class GraphNode:
 
     def plus_or_minus(self, current_value, goal_value, amount): #TODO Fix random, make it so it goes up or down depending on difference
 
-        if goal_value - current_value > 0:
-            return current_value + amount
-        elif goal_value - current_value < 0:
-            return current_value - amount
+        difference = goal_value - current_value
+
+        # if 0 < difference < amount:
+        #     return difference + (difference - amount)
+        # elif 0 > difference > amount:
+        #     return difference - (difference + amount)
+        if difference > 0:
+            return current_value + random.uniform(0, amount)
+        elif difference < 0:
+            return current_value - random.uniform(0, amount)
+        elif difference == 0:
+            return current_value + 0
+
 
     def generate_intermediate_sample(self, config, goal): # TODO Maybe generate steps which are only closer, if they are at the goal, make the angle fixed
 
@@ -148,7 +157,9 @@ class GraphNode:
 
         total_difference = self.initial_difference()
         new_difference = self.current_difference(current, goal)
-        all_closer = [0, 0, 0]
+        all_closer = []
+        for i in range(0, len(current.ee1_angles)):
+            all_closer.append(0)
 
         for i in range(len(total_difference)):
             if total_difference[i] < 0:
@@ -163,8 +174,7 @@ class GraphNode:
                 else:
                     all_closer[i] = 0
 
-        return all_closer == [1, 1, 1]
-
+        return all_closer == [1, 1, 1, 1]
 
     def interpolate_path(self, config1, config2):
 
@@ -248,7 +258,7 @@ def find_graph_path(spec, init_node):
 def main(arglist):
     # input_file = arglist[0]
     # output_file = arglist[1]
-    input_file = "testcases/3g1_m1.txt"
+    input_file = "testcases/4g1_m1.txt"
     output_file = "testcases/output.txt"
     spec = ProblemSpec(input_file)
 
@@ -277,12 +287,10 @@ def main(arglist):
         write_robot_config_list_to_file(output_file, steps)
         # print(steps)
 
-
-
     c1 = spec.initial
     c2 = spec.goal
     a = g.interpolate_path(c1, c2)
-    print(a)
+
 
 
     #
