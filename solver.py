@@ -93,10 +93,11 @@ class GraphNode:
 
         test = test_obstacle_collision(random_config, self.spec, self.obstacles)
 
-        if test and self.self_collision_check(random_config):
+        if test and self.self_collision_check(random_config) and test_environment_bounds(random_config):
             return random_config
         else:
             return self.generate_sample()
+
 
     def initial_difference(self):
         initial_angles = self.spec.initial.ee1_angles
@@ -113,18 +114,16 @@ class GraphNode:
         for i in range(len(current_angles)):
             difference.append(current_angles[i] - goal_angles[i])
         return tuple(difference)
-    
-    
-    def plus_or_minus(self, value, other_value): #TODO Fix random, make it so it goes up or down depending on difference
 
-        plus_minus = random.randint(0, 1)
 
-        if plus_minus == 0:
-            return value + other_value
-        else:
-            return value - other_value
-        
-    def generate_intermediate_sample(self, config): # TODO Maybe generate steps which are only closer, if they are at the goal, make the angle fixed
+    def plus_or_minus(self, current_value, goal_value, amount): #TODO Fix random, make it so it goes up or down depending on difference
+
+        if goal_value - current_value > 0:
+            return current_value + amount
+        elif goal_value - current_value < 0:
+            return current_value - amount
+
+    def generate_intermediate_sample(self, config, goal): # TODO Maybe generate steps which are only closer, if they are at the goal, make the angle fixed
 
         original_x = config.points[0][0]
         original_y = config.points[0][1]
@@ -132,11 +131,12 @@ class GraphNode:
         original_lengths = config.lengths
         original_ee1_grappled = config.ee1_grappled
         original_ee2_grappled = config.ee2_grappled
+        goal_angles = goal.ee1_angles
 
         primitive = self.spec.PRIMITIVE_STEP
         new_angles = []
         for i in range(len(original_angles)):
-            new_angles.append(self.plus_or_minus(original_angles[i], primitive))
+            new_angles.append(self.plus_or_minus(original_angles[i], goal_angles[i], primitive))
         tuple(new_angles)
 
         new_config = make_robot_config_from_ee1(original_x, original_y, new_angles, original_lengths,
@@ -169,10 +169,9 @@ class GraphNode:
     def interpolate_path(self, config1, config2):
 
         successful_nodes = [config1]
-
         i = 0
         while successful_nodes[i].points != config2.points:
-            new = self.generate_intermediate_sample(successful_nodes[i]) # TODO Fix this
+            new = self.generate_intermediate_sample(successful_nodes[i], config2) # TODO Fix this
             if self.closer(new, config2):
                 test = test_config_distance(new, successful_nodes[i], self.spec)
                 if test:
@@ -181,8 +180,20 @@ class GraphNode:
                     i += 1
         successful_nodes.append(config2)
         return successful_nodes
+    
+    def add_within_radius(self, config1, config2):
+        
+        lst = []
+        
+        r = 0.5
 
-    def self_collision_check(self, config): # TODO Make collision check
+        config = self.generate_sample()
+
+        for i in config1.points:
+            a = list(i)
+            print(a)
+
+    def self_collision_check(self, config):
         """
         A method which checks whether any segment of the robot configuration has any
         collisions with another segment of itself.
@@ -237,7 +248,7 @@ def find_graph_path(spec, init_node):
 def main(arglist):
     # input_file = arglist[0]
     # output_file = arglist[1]
-    input_file = "testcases/4g1_m1.txt"
+    input_file = "testcases/3g1_m1.txt"
     output_file = "testcases/output.txt"
     spec = ProblemSpec(input_file)
 
@@ -248,9 +259,9 @@ def main(arglist):
 
     steps = []
 
-    for i in range(100):
-        sample = g.generate_sample()
-        steps.append(sample)
+    # for i in range(1000):
+    #     sample = g.generate_sample()
+    #     steps.append(sample)
 
     #
     #
@@ -268,18 +279,17 @@ def main(arglist):
 
 
 
-    # c1 = spec.initial
-    # c2 = spec.goal
-    #
-    # a = g.interpolate_path(c1, c2)
-    # print(a)
+    c1 = spec.initial
+    c2 = spec.goal
+    a = g.interpolate_path(c1, c2)
+    print(a)
 
 
     #
     # You may uncomment this line to launch visualiser once a solution has been found. This may be useful for debugging.
     # *** Make sure this line is commented out when you submit to Gradescope ***
     #
-    v = Visualiser(spec, steps)
+    # v = Visualiser(spec, steps)
 
 
 if __name__ == '__main__':
