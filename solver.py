@@ -172,7 +172,11 @@ class GraphNode:
                 else:
                     all_closer[i] = 0
 
-        return all_closer == np.allclose(all_closer, 1)
+        goal_state = []  # the goal state is when all angles are closer [1, 1, 1]
+        for i in range(0, len(current.ee1_angles)):
+            goal_state.append(1)
+
+        return all_closer == goal_state  # return bool whether all closer == goal state
 
     def interpolate_path(self, config1, config2):
 
@@ -180,7 +184,6 @@ class GraphNode:
         i = 0
         while successful_nodes[i].points != config2.points:
             new = self.generate_intermediate_sample(successful_nodes[i], config2)
-
             if self.closer(new, config2):
                 test = test_config_distance(new, successful_nodes[i], self.spec)
                 if test:
@@ -212,10 +215,12 @@ class GraphNode:
 
         return test_self_collision(config, self.spec)
 
+    def path_collision_check(self, config1, config2):
+        route = self.interpolate_path(config1, config2)
 
-    # def path_collision_check(self, config1, config2):
-
-
+        for edge in route:
+            test_col = test_obstacle_collision(edge, self.spec, self.obstacles)
+            return test_col  # return true if there is a collision, false otherwise
 
 
 def find_graph_path(spec, init_node):
@@ -286,8 +291,8 @@ def main(arglist):
 
     # c1 = spec.initial
     # c2 = spec.goal
-    # a = g.interpolate_path(c1, c2)
-
+    # a = g.path_collision_check(c1, c2)
+    # print(a)
 
 
     #
