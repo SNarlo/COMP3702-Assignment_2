@@ -115,21 +115,23 @@ class GraphNode:
             difference.append(current_angles[i] - goal_angles[i])
         return tuple(difference)
 
-
     def plus_or_minus(self, current_value, goal_value, amount): #TODO Fix random, make it so it goes up or down depending on difference
 
         difference = goal_value - current_value
 
-        # if 0 < difference < amount:
-        #     return difference + (difference - amount)
-        # elif 0 > difference > amount:
-        #     return difference - (difference + amount)
-        if difference > 0:
+
+        if 0 < difference < amount:
+            return goal_value
+        if 0 > difference > amount:
+            return goal_value
+        elif difference > 0:
             return current_value + random.uniform(0, amount)
         elif difference < 0:
             return current_value - random.uniform(0, amount)
+
         elif difference == 0:
             return current_value + 0
+
 
 
     def generate_intermediate_sample(self, config, goal): # TODO Maybe generate steps which are only closer, if they are at the goal, make the angle fixed
@@ -188,7 +190,7 @@ class GraphNode:
                     print(new)
                     successful_nodes.append(new)
                     i += 1
-        successful_nodes.append(config2)
+        print(successful_nodes)
         return successful_nodes
     
     def add_within_radius(self, config1, config2):
