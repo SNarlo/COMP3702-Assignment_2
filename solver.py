@@ -5,7 +5,7 @@ from robot_config import write_robot_config_list_to_file
 from tester import *
 from visualiser import Visualiser
 import random
-import matplotlib.pyplot as pyplot
+import numpy as np
 """
 Template file for you to implement your solution to Assignment 2. Contains a class you can use to represent graph nodes,
 and a method for finding a path in a graph made up of GraphNode objects.
@@ -119,7 +119,6 @@ class GraphNode:
 
         difference = goal_value - current_value
 
-
         if 0 < difference < amount:
             return goal_value
         if 0 > difference > amount:
@@ -128,11 +127,8 @@ class GraphNode:
             return current_value + random.uniform(0, amount)
         elif difference < 0:
             return current_value - random.uniform(0, amount)
-
         elif difference == 0:
             return current_value + 0
-
-
 
     def generate_intermediate_sample(self, config, goal): # TODO Maybe generate steps which are only closer, if they are at the goal, make the angle fixed
 
@@ -176,21 +172,21 @@ class GraphNode:
                 else:
                     all_closer[i] = 0
 
-        return all_closer == [1, 1, 1, 1]
+        return all_closer == np.allclose(all_closer, 1)
 
     def interpolate_path(self, config1, config2):
 
         successful_nodes = [config1]
         i = 0
         while successful_nodes[i].points != config2.points:
-            new = self.generate_intermediate_sample(successful_nodes[i], config2) # TODO Fix this
+            new = self.generate_intermediate_sample(successful_nodes[i], config2)
+
             if self.closer(new, config2):
                 test = test_config_distance(new, successful_nodes[i], self.spec)
                 if test:
-                    print(new)
                     successful_nodes.append(new)
                     i += 1
-        print(successful_nodes)
+
         return successful_nodes
     
     def add_within_radius(self, config1, config2):
@@ -260,7 +256,7 @@ def find_graph_path(spec, init_node):
 def main(arglist):
     # input_file = arglist[0]
     # output_file = arglist[1]
-    input_file = "testcases/4g1_m1.txt"
+    input_file = "testcases/3g1_m2.txt"
     output_file = "testcases/output.txt"
     spec = ProblemSpec(input_file)
 
@@ -271,9 +267,8 @@ def main(arglist):
 
     steps = []
 
-    # for i in range(1000):
-    #     sample = g.generate_sample()
-    #     steps.append(sample)
+    for i in g.interpolate_path(spec.initial, spec.goal):
+        steps.append(i)
 
     #
     #
@@ -289,9 +284,9 @@ def main(arglist):
         write_robot_config_list_to_file(output_file, steps)
         # print(steps)
 
-    c1 = spec.initial
-    c2 = spec.goal
-    a = g.interpolate_path(c1, c2)
+    # c1 = spec.initial
+    # c2 = spec.goal
+    # a = g.interpolate_path(c1, c2)
 
 
 
@@ -299,7 +294,7 @@ def main(arglist):
     # You may uncomment this line to launch visualiser once a solution has been found. This may be useful for debugging.
     # *** Make sure this line is commented out when you submit to Gradescope ***
     #
-    # v = Visualiser(spec, steps)
+    v = Visualiser(spec, steps)
 
 
 if __name__ == '__main__':
