@@ -193,17 +193,29 @@ class GraphNode:
 
     def interpolate_path(self, config1, config2):
 
-        successful_nodes = [config1]
-        i = 0
-        while successful_nodes[i].points != config2.points:
-            new = self.generate_intermediate_sample(successful_nodes[i], config2)
-            if self.closer(new, config2):
-                test = test_config_distance(new, successful_nodes[i], self.spec)
-                if test:
-                    successful_nodes.append(new)
-                    i += 1
+        # successful_nodes = [config1]
+        # i = 0
+        # while successful_nodes[i].points != config2.points:
+        #     new = self.generate_intermediate_sample(successful_nodes[i], config2)
+        #     if self.closer(new, config2):
+        #         test = test_config_distance(new, successful_nodes[i], self.spec)
+        #         if test:
+        #             successful_nodes.append(new)
+        #             i += 1
+        #
+        # return successful_nodes
 
-        return successful_nodes
+        steps = []
+
+        if config1.ee1_grappled and config2.ee1_grappled and \
+                point_is_close(config1.points[0][0], config1.points[0][1], config2.points[0][0], config2.points[0][1], self.spec.TOLERANCE):
+            ee1_grappled = True
+            ee2_grappled = False
+            x1, y1 = config1.points[0]
+            base_angles = config1.ee1_angles
+            d_angles = [config2.ee1_angles]
+
+
 
 
     def self_collision_check(self, config):
@@ -218,30 +230,42 @@ class GraphNode:
         return test_self_collision(config, self.spec)
 
     def path_collision_check(self, config1, config2):
+
         route = self.interpolate_path(config1, config2)
 
+        result = True
         for edge in route:
             test_col = test_obstacle_collision(edge, self.spec, self.obstacles)
-            return test_col  # return true if there is a collision, false otherwise
+            if not test_col:
+                result = False
+
+        return result
+
+
 
     def PRM(self, initial, goal):
         nodes = [initial, goal]
         steplist = []
-        dist_limit = 0.25
+        dist_limit = 0.3
+        failed = 0
         while True:
             for i in range(100):
-                s = self.generate_sample()
-                n = GraphNode(self.spec, s)
-                for j in nodes:
-                    if self.dist_between(n.config, j.config) < dist_limit:
-                        if self.path_collision_check(n.config, j.config) and test_obstacle_collision(n.config, self.spec, self.obstacles) and self.self_collision_check(n.config):
-                            self.add_connection(n, j)
-                    else:
-                        break
-                nodes.append(n)
-                steplist.append(n.config)
-            break
-        return steplist
+                print(i)
+                try:
+                    s = self.generate_sample()
+                    if test_obstacle_collision(s, self.spec, self.obstacles) and self.self_collision_check(s):
+                        n = GraphNode(self.spec, s)
+                        for j in nodes:
+                            if self.dist_between(n.config, j.config) < dist_limit:
+                                if self.path_collision_check(j.config, n.config):
+                                    self.add_connection(n, j)
+                        nodes.append(n)
+                except Exception:
+                    failed += 1
+
+            print(find_graph_path(self.spec, initial))
+
+
 
 
 
@@ -285,7 +309,7 @@ def find_graph_path(spec, init_node):
 def main(arglist):
     # input_file = arglist[0]
     # output_file = arglist[1]
-    input_file = "testcases/3g1_m1.txt"
+    input_file = "testcases/3g1_m0.txt"
     output_file = "testcases/output.txt"
     spec = ProblemSpec(input_file)
 
@@ -297,12 +321,10 @@ def main(arglist):
     steps = []
 
     c1 = spec.initial
-    c2 = g.generate_sample()
+    c2 = spec.goal
 
     b = g.PRM(init_node, goal_node)
 
-    for i in b:
-        steps.append(i)
 
     # Code for your main method can go here.
     #
@@ -314,10 +336,6 @@ def main(arglist):
 
     if len(arglist) > 1:
         write_robot_config_list_to_file(output_file, steps)
-        # print(steps)
-
-
-
 
     #
     # You may uncomment this line to launch visualiser once a solution has been found. This may be useful for debugging.
