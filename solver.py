@@ -83,8 +83,7 @@ class GraphNode:
         Generating a random robot configuration which is collision free
         :return: A robot configuration which is collision free
         """
-        # rand_x = round(random.random(), 2)
-        # rand_y = round(random.random(), 2)
+
         rand_angles = self.generate_random_angles()
         rand_lengths = self.generate_random_lengths()
 
@@ -111,9 +110,23 @@ class GraphNode:
         current_angles = current.ee1_angles
         goal_angles = goal.ee1_angles
         difference = []
+        total = 0
         for i in range(len(current_angles)):
-            difference.append(current_angles[i] - goal_angles[i])
+            current_diff = current_angles[i] - goal_angles[i]
+            difference.append(current_diff)
+            total += float(str(current_diff))
         return tuple(difference)
+
+    def dist_between(self, config1, config2):
+
+        dx = 0
+        dy = 0
+        for a in range(len(config1.points)):
+            dx += config1.points[a][0] - config2.points[a][0]
+            dy += config1.points[a][1] - config2.points[a][1]
+
+        euclidean_dist = math.sqrt(dx**2 + dy**2)
+        return euclidean_dist
 
     def plus_or_minus(self, current_value, goal_value, amount): #TODO Fix random, make it so it goes up or down depending on difference
 
@@ -191,18 +204,7 @@ class GraphNode:
                     i += 1
 
         return successful_nodes
-    
-    def add_within_radius(self, config1, config2):
-        
-        lst = []
-        
-        r = 0.5
 
-        config = self.generate_sample()
-
-        for i in config1.points:
-            a = list(i)
-            print(a)
 
     def self_collision_check(self, config):
         """
@@ -221,6 +223,26 @@ class GraphNode:
         for edge in route:
             test_col = test_obstacle_collision(edge, self.spec, self.obstacles)
             return test_col  # return true if there is a collision, false otherwise
+
+    def PRM(self, initial, goal):
+        nodes = [initial, goal]
+        steplist = []
+        dist_limit = 0.25
+        while True:
+            for i in range(100):
+                s = self.generate_sample()
+                n = GraphNode(self.spec, s)
+                for j in nodes:
+                    if self.dist_between(n.config, j.config) < dist_limit:
+                        if self.path_collision_check(n.config, j.config) and test_obstacle_collision(n.config, self.spec, self.obstacles) and self.self_collision_check(n.config):
+                            self.add_connection(n, j)
+                    else:
+                        break
+                nodes.append(n)
+                steplist.append(n.config)
+            break
+        return steplist
+
 
 
 def find_graph_path(spec, init_node):
@@ -258,10 +280,12 @@ def find_graph_path(spec, init_node):
     return None
 
 
+
+
 def main(arglist):
     # input_file = arglist[0]
     # output_file = arglist[1]
-    input_file = "testcases/3g1_m2.txt"
+    input_file = "testcases/3g1_m1.txt"
     output_file = "testcases/output.txt"
     spec = ProblemSpec(input_file)
 
@@ -272,11 +296,14 @@ def main(arglist):
 
     steps = []
 
-    for i in g.interpolate_path(spec.initial, spec.goal):
+    c1 = spec.initial
+    c2 = g.generate_sample()
+
+    b = g.PRM(init_node, goal_node)
+
+    for i in b:
         steps.append(i)
 
-    #
-    #
     # Code for your main method can go here.
     #
     # Your code should find a sequence of RobotConfig objects such that all configurations are collision free, the
@@ -289,10 +316,7 @@ def main(arglist):
         write_robot_config_list_to_file(output_file, steps)
         # print(steps)
 
-    # c1 = spec.initial
-    # c2 = spec.goal
-    # a = g.path_collision_check(c1, c2)
-    # print(a)
+
 
 
     #
