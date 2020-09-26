@@ -3,7 +3,7 @@ import sys
 from problem_spec import ProblemSpec
 from robot_config import write_robot_config_list_to_file
 from tester import *
-from visualiser import Visualiser
+# from visualiser import Visualiser
 import random
 import numpy as np
 """
@@ -294,27 +294,26 @@ class GraphNode:
 
     def PRM(self, initial, goal):
 
-        dist_limit = 0.5
+        dist_limit = 0.3
 
         if self.dist_between(self.spec.initial, self.spec.goal) < dist_limit:
             if self.path_check(self.spec.initial, self.spec.goal):
                 return [self.spec.initial, self.spec.goal]
 
         nodes = [initial, goal]
-        failed = 0
         while True:
-            for i in range(50):
-                print(i)
+            search_range = 100
+            for i in range(search_range):
                 try:
-                    s = self.generate_sample()
-                    n = GraphNode(self.spec, s)
+                    random_config = self.generate_sample()
+                    node = GraphNode(self.spec, random_config)
                     for j in nodes:
-                        if self.dist_between(n.config, j.config) < dist_limit:
-                            if self.path_check(n.config, j.config):
-                                self.add_connection(n, j)
-                    nodes.append(n)
+                        if self.dist_between(node.config, j.config) < dist_limit:
+                            if self.path_check(node.config, j.config):
+                                self.add_connection(node, j)
+                    nodes.append(node)
                 except Exception:
-                    failed += 1
+                    "Failed"
             step_list = self.interpolate_path(find_graph_path(self.spec, initial))
             if len(step_list) != 0:
                 return step_list
@@ -356,10 +355,10 @@ def find_graph_path(spec, init_node):
 
 
 def main(arglist):
-    # input_file = arglist[0]
-    # output_file = arglist[1]
-    input_file = "testcases/4g1_m1.txt"
-    output_file = "testcases/output.txt"
+    input_file = arglist[0]
+    output_file = arglist[1]
+    # input_file = "testcases/3g1_m0.txt"
+    # output_file = "testcases/output.txt"
     spec = ProblemSpec(input_file)
 
     init_node = GraphNode(spec, spec.initial)
@@ -367,23 +366,7 @@ def main(arglist):
 
     g = GraphNode(spec, spec.goal)
 
-    steps = []
-
-    c1 = spec.initial
-    c2 = g.generate_sample()
-    path = [c1, c2]
-
-    # i = 0
-    # while i < 100:
-    #     c1 = spec.initial
-    #     c2 = g.generate_sample()
-    #     b = g.dist_between(c1, c2)
-    #     steps.append(c2)
-    #     print(b, i)
-    #     i += 1
-
-
-    c = g.PRM(init_node, goal_node)
+    path_plan = g.PRM(init_node, goal_node)
 
     # Code for your main method can go here.
     #
@@ -393,14 +376,14 @@ def main(arglist):
     #
     #
 
-    if len(arglist) > 1:
-        write_robot_config_list_to_file(output_file, steps)
+    # if len(arglist) > 1:
+    write_robot_config_list_to_file(output_file, path_plan)
 
     #
     # You may uncomment this line to launch visualiser once a solution has been found. This may be useful for debugging.
     # *** Make sure this line is commented out when you submit to Gradescope ***
     #
-    v = Visualiser(spec, c)
+    # v = Visualiser(spec, path_plan)
 
 
 if __name__ == '__main__':
