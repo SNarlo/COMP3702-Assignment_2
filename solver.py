@@ -237,7 +237,7 @@ class GraphNode:
 
     def path_collision_check(self, config1, config2):
 
-        route = self.interpolate_path(config1, config2)
+        route = self.interpolate_path([config1, config2])
 
         result = True
         for edge in route:
@@ -246,31 +246,79 @@ class GraphNode:
                 result = False
 
         return result
+    
+    def path_check(self, config1, config2):
+        """
+        Return true for a valid path, false otherwise.
+        :param c1: Config1 
+        :param c2: Config2
+        :return: True or False
+        """
 
+        if config1.ee1_grappled and config2.ee1_grappled and \
+                point_is_close(config1.points[0][0], config1.points[0][1], config2.points[0][0], config2.points[0][1],
+                               self.spec.TOLERANCE):
+            ee1_grappled = True
+            ee2_grappled = False
+            x1, y1 = config1.points[0]
+            base_angles = config1.ee1_angles
+            d_angles = [config2.ee1_angles[i].in_radians() - config1.ee1_angles[i].in_radians() for i in
+                        range(self.spec.num_segments)]
+            make_config = make_robot_config_from_ee1
+        else:
+            raise Exception("Invalid configs given to interpolate")
 
+        d_lengths = [config2.lengths[i] - config1.lengths[i] for i in range(self.spec.num_segments)]
+        n_steps = max(math.ceil(max([abs(da) for da in d_angles]) / self.spec.PRIMITIVE_STEP),
+                      math.ceil(max([abs(dl) for dl in d_lengths]) / self.spec.PRIMITIVE_STEP)) + 1
+        delta_angles = [d_angles[i] / n_steps for i in range(self.spec.num_segments)]
+        delta_lengths = [d_lengths[i] / n_steps for i in range(self.spec.num_segments)]
+
+        for i in range(n_steps):
+            angles = [base_angles[j] + (delta_angles[j] * (i + 1)) for j in range(self.spec.num_segments)]
+            lengths = [config1.lengths[j] + (delta_lengths[j] * (i + 1)) for j in range(self.spec.num_segments)]
+            c = make_config(x1, y1, angles, lengths, ee1_grappled, ee2_grappled)
+            
+            if not test_environment_bounds(c):
+                return False
+            if not test_angle_constraints(c, self.spec):
+                return False
+            if not test_length_constraints(c, self.spec):
+                return False
+            if not test_self_collision(c, self.spec):
+                return False
+            if not test_obstacle_collision(c, self.spec, self.obstacles):
+                return False
+            
+        return True
 
     def PRM(self, initial, goal):
+
+        dist_limit = 0.01
+
+        if self.dist_between(self.spec.initial, self.spec.goal) < dist_limit:
+            if self.path_check(self.spec.initial, self.spec.goal):
+                return [self.spec.initial, self.spec.goal]
+
         nodes = [initial, goal]
-        steplist = []
-        dist_limit = 0.3
+        step_list = []
         failed = 0
         while True:
-            for i in range(100):
+            for i in range(1000):
                 print(i)
                 try:
                     s = self.generate_sample()
-                    if test_obstacle_collision(s, self.spec, self.obstacles) and self.self_collision_check(s):
-                        n = GraphNode(self.spec, s)
-                        for j in nodes:
-                            if self.dist_between(n.config, j.config) < dist_limit:
-                                if self.path_collision_check(j.config, n.config):
-                                    self.add_connection(n, j)
-                        nodes.append(n)
+                    n = GraphNode(self.spec, s)
+                    for j in nodes:
+                        if self.dist_between(n.config, j.config) < dist_limit:
+                            if self.path_check(n.config, j.config):
+                                self.add_connection(n, j)
+                                step_list.append(j.config)
+                                step_list.append(n.config)
+                    nodes.append(n)
                 except Exception:
                     failed += 1
-
-            print(find_graph_path(self.spec, initial))
-
+            return find_graph_path(self.spec, nodes[0])
 
 
 
@@ -310,12 +358,10 @@ def find_graph_path(spec, init_node):
     return None
 
 
-
-
 def main(arglist):
     # input_file = arglist[0]
     # output_file = arglist[1]
-    input_file = "testcases/3g1_m1.txt"
+    input_file = "testcases/3g1_m0.txt"
     output_file = "testcases/output.txt"
     spec = ProblemSpec(input_file)
 
@@ -330,7 +376,18 @@ def main(arglist):
     c2 = g.generate_sample()
     path = [c1, c2]
 
-    b = g.interpolate_path(path)
+    # i = 0
+    # while i < 100:
+    #     c1 = spec.initial
+    #     c2 = g.generate_sample()
+    #     b = g.dist_between(c1, c2)
+    #     steps.append(c2)
+    #     print(b, i)
+    #     i += 1
+
+
+    c = g.PRM(init_node, goal_node)
+    print(c)
 
 
     # Code for your main method can go here.
@@ -348,7 +405,7 @@ def main(arglist):
     # You may uncomment this line to launch visualiser once a solution has been found. This may be useful for debugging.
     # *** Make sure this line is commented out when you submit to Gradescope ***
     #
-    v = Visualiser(spec, b)
+    # v = Visualiser(spec, steps)
 
 
 if __name__ == '__main__':
