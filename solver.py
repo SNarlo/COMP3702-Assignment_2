@@ -315,8 +315,8 @@ class GraphNode:
                 except Exception:
                     "Failed"
             step_list = self.interpolate_path(find_graph_path(self.spec, initial))
-            if len(step_list) != 0:
-                return step_list
+            step_list.insert(0, initial.config)
+            return step_list
 
 
 def find_graph_path(spec, init_node):
@@ -355,10 +355,10 @@ def find_graph_path(spec, init_node):
 
 
 def main(arglist):
-    input_file = arglist[0]
-    output_file = arglist[1]
-    # input_file = "testcases/3g1_m0.txt"
-    # output_file = "testcases/output.txt"
+    # input_file = arglist[0]
+    # output_file = arglist[1]
+    input_file = "testcases/3g1_m0.txt"
+    output_file = "testcases/output.txt"
     spec = ProblemSpec(input_file)
 
     init_node = GraphNode(spec, spec.initial)
