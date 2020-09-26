@@ -294,7 +294,7 @@ class GraphNode:
 
     def PRM(self, initial, goal):
 
-        dist_limit = 0.3
+        dist_limit = 0.5
 
         if self.dist_between(self.spec.initial, self.spec.goal) < dist_limit:
             if self.path_check(self.spec.initial, self.spec.goal):
@@ -304,6 +304,7 @@ class GraphNode:
         while True:
             search_range = 100
             for i in range(search_range):
+                print(i)
                 try:
                     random_config = self.generate_sample()
                     node = GraphNode(self.spec, random_config)
@@ -355,10 +356,10 @@ def find_graph_path(spec, init_node):
 
 
 def main(arglist):
-    # input_file = arglist[0]
-    # output_file = arglist[1]
-    input_file = "testcases/3g1_m0.txt"
-    output_file = "testcases/output.txt"
+    input_file = arglist[0]
+    output_file = arglist[1]
+    # input_file = "testcases/4g1_m1.txt"
+    # output_file = "testcases/output.txt"
     spec = ProblemSpec(input_file)
 
     init_node = GraphNode(spec, spec.initial)
@@ -367,6 +368,7 @@ def main(arglist):
     g = GraphNode(spec, spec.goal)
 
     path_plan = g.PRM(init_node, goal_node)
+    write_robot_config_list_to_file(output_file, path_plan)
 
     # Code for your main method can go here.
     #
@@ -377,7 +379,7 @@ def main(arglist):
     #
 
     # if len(arglist) > 1:
-    write_robot_config_list_to_file(output_file, path_plan)
+
 
     #
     # You may uncomment this line to launch visualiser once a solution has been found. This may be useful for debugging.
