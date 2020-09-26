@@ -294,17 +294,16 @@ class GraphNode:
 
     def PRM(self, initial, goal):
 
-        dist_limit = 0.01
+        dist_limit = 0.5
 
         if self.dist_between(self.spec.initial, self.spec.goal) < dist_limit:
             if self.path_check(self.spec.initial, self.spec.goal):
                 return [self.spec.initial, self.spec.goal]
 
         nodes = [initial, goal]
-        step_list = []
         failed = 0
         while True:
-            for i in range(1000):
+            for i in range(50):
                 print(i)
                 try:
                     s = self.generate_sample()
@@ -313,14 +312,12 @@ class GraphNode:
                         if self.dist_between(n.config, j.config) < dist_limit:
                             if self.path_check(n.config, j.config):
                                 self.add_connection(n, j)
-                                step_list.append(j.config)
-                                step_list.append(n.config)
                     nodes.append(n)
                 except Exception:
                     failed += 1
-            return find_graph_path(self.spec, nodes[0])
-
-
+            step_list = self.interpolate_path(find_graph_path(self.spec, initial))
+            if len(step_list) != 0:
+                return step_list
 
 
 def find_graph_path(spec, init_node):
@@ -361,7 +358,7 @@ def find_graph_path(spec, init_node):
 def main(arglist):
     # input_file = arglist[0]
     # output_file = arglist[1]
-    input_file = "testcases/3g1_m0.txt"
+    input_file = "testcases/4g1_m1.txt"
     output_file = "testcases/output.txt"
     spec = ProblemSpec(input_file)
 
@@ -387,8 +384,6 @@ def main(arglist):
 
 
     c = g.PRM(init_node, goal_node)
-    print(c)
-
 
     # Code for your main method can go here.
     #
@@ -405,7 +400,7 @@ def main(arglist):
     # You may uncomment this line to launch visualiser once a solution has been found. This may be useful for debugging.
     # *** Make sure this line is commented out when you submit to Gradescope ***
     #
-    # v = Visualiser(spec, steps)
+    v = Visualiser(spec, c)
 
 
 if __name__ == '__main__':
