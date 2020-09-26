@@ -191,31 +191,37 @@ class GraphNode:
 
         return all_closer == goal_state  # return bool whether all closer == goal state
 
-    def interpolate_path(self, config1, config2):
-
-        # successful_nodes = [config1]
-        # i = 0
-        # while successful_nodes[i].points != config2.points:
-        #     new = self.generate_intermediate_sample(successful_nodes[i], config2)
-        #     if self.closer(new, config2):
-        #         test = test_config_distance(new, successful_nodes[i], self.spec)
-        #         if test:
-        #             successful_nodes.append(new)
-        #             i += 1
-        #
-        # return successful_nodes
+    def interpolate_path(self, path):
 
         steps = []
+        for i in range(len(path) - 1):
+            config1 = path[i]
+            config2 = path[i + 1]
 
-        if config1.ee1_grappled and config2.ee1_grappled and \
-                point_is_close(config1.points[0][0], config1.points[0][1], config2.points[0][0], config2.points[0][1], self.spec.TOLERANCE):
-            ee1_grappled = True
-            ee2_grappled = False
-            x1, y1 = config1.points[0]
-            base_angles = config1.ee1_angles
-            d_angles = [config2.ee1_angles]
+            if config1.ee1_grappled and config2.ee1_grappled and \
+                    point_is_close(config1.points[0][0], config1.points[0][1], config2.points[0][0], config2.points[0][1], self.spec.TOLERANCE):
+                ee1_grappled = True
+                ee2_grappled = False
+                x1, y1 = config1.points[0]
+                base_angles = config1.ee1_angles
+                d_angles = [config2.ee1_angles[i].in_radians() - config1.ee1_angles[i].in_radians() for i in range(self.spec.num_segments)]
+                make_config = make_robot_config_from_ee1
+            else:
+                raise Exception("Invalid configs given to interpolate")
 
+            d_lengths = [config2.lengths[i] - config1.lengths[i] for i in range(self.spec.num_segments)]
+            n_steps = max(math.ceil(max([abs(da) for da in d_angles]) / self.spec.PRIMITIVE_STEP),
+                          math.ceil(max([abs(dl) for dl in d_lengths]) / self.spec.PRIMITIVE_STEP)) + 1
+            delta_angles = [d_angles[i] / n_steps for i in range(self.spec.num_segments)]
+            delta_lengths = [d_lengths[i] / n_steps for i in range(self.spec.num_segments)]
 
+            for i in range(n_steps):
+                angles = [base_angles[j] + (delta_angles[j] * (i + 1)) for j in range(self.spec.num_segments)]
+                lengths = [config1.lengths[j] + (delta_lengths[j] * (i + 1)) for j in range(self.spec.num_segments)]
+                c = make_config(x1, y1, angles, lengths, ee1_grappled, ee2_grappled)
+                steps.append(c)
+
+        return steps
 
 
     def self_collision_check(self, config):
@@ -309,7 +315,7 @@ def find_graph_path(spec, init_node):
 def main(arglist):
     # input_file = arglist[0]
     # output_file = arglist[1]
-    input_file = "testcases/3g1_m0.txt"
+    input_file = "testcases/3g1_m1.txt"
     output_file = "testcases/output.txt"
     spec = ProblemSpec(input_file)
 
@@ -321,9 +327,10 @@ def main(arglist):
     steps = []
 
     c1 = spec.initial
-    c2 = spec.goal
+    c2 = g.generate_sample()
+    path = [c1, c2]
 
-    b = g.PRM(init_node, goal_node)
+    b = g.interpolate_path(path)
 
 
     # Code for your main method can go here.
@@ -341,7 +348,7 @@ def main(arglist):
     # You may uncomment this line to launch visualiser once a solution has been found. This may be useful for debugging.
     # *** Make sure this line is commented out when you submit to Gradescope ***
     #
-    v = Visualiser(spec, steps)
+    v = Visualiser(spec, b)
 
 
 if __name__ == '__main__':
