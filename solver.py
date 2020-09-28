@@ -3,7 +3,7 @@ import sys
 from problem_spec import ProblemSpec
 from robot_config import write_robot_config_list_to_file
 from tester import *
-# from visualiser import Visualiser
+from visualiser import Visualiser
 import random
 import numpy as np
 """
@@ -92,33 +92,19 @@ class GraphNode:
 
         test = test_obstacle_collision(random_config, self.spec, self.obstacles)
 
-        if test and self.self_collision_check(random_config) and test_environment_bounds(random_config):
+        if test and test_self_collision(random_config, self.spec) and test_environment_bounds(random_config):
             return random_config
         else:
             return self.generate_sample()
 
 
-    def initial_difference(self):
-        initial_angles = self.spec.initial.ee1_angles
-        goal_angles = self.spec.goal.ee1_angles
-        difference = []
-        for i in range(len(initial_angles)):
-            difference.append(initial_angles[i] - goal_angles[i])
-        return tuple(difference)
-
-    def current_difference(self, current, goal):
-        current_angles = current.ee1_angles
-        goal_angles = goal.ee1_angles
-        difference = []
-        total = 0
-        for i in range(len(current_angles)):
-            current_diff = current_angles[i] - goal_angles[i]
-            difference.append(current_diff)
-            total += float(str(current_diff))
-        return tuple(difference)
-
     def dist_between(self, config1, config2):
-
+        """
+        A method which calculate the Euclidean distance between two configs segments
+        :param config1: The start config.
+        :param config2: The goal config.
+        :return: Euclidean distance of all segments summed.
+        """
         dx = 0
         dy = 0
         for a in range(len(config1.points)):
@@ -128,70 +114,13 @@ class GraphNode:
         euclidean_dist = math.sqrt(dx**2 + dy**2)
         return euclidean_dist
 
-    def plus_or_minus(self, current_value, goal_value, amount): #TODO Fix random, make it so it goes up or down depending on difference
-
-        difference = goal_value - current_value
-
-        if 0 < difference < amount:
-            return goal_value
-        if 0 > difference > amount:
-            return goal_value
-        elif difference > 0:
-            return current_value + random.uniform(0, amount)
-        elif difference < 0:
-            return current_value - random.uniform(0, amount)
-        elif difference == 0:
-            return current_value + 0
-
-    def generate_intermediate_sample(self, config, goal): # TODO Maybe generate steps which are only closer, if they are at the goal, make the angle fixed
-
-        original_x = config.points[0][0]
-        original_y = config.points[0][1]
-        original_angles = config.ee1_angles
-        original_lengths = config.lengths
-        original_ee1_grappled = config.ee1_grappled
-        original_ee2_grappled = config.ee2_grappled
-        goal_angles = goal.ee1_angles
-
-        primitive = self.spec.PRIMITIVE_STEP
-        new_angles = []
-        for i in range(len(original_angles)):
-            new_angles.append(self.plus_or_minus(original_angles[i], goal_angles[i], primitive))
-        tuple(new_angles)
-
-        new_config = make_robot_config_from_ee1(original_x, original_y, new_angles, original_lengths,
-                                                original_ee1_grappled, original_ee2_grappled)
-
-        return new_config
-
-    def closer(self, current, goal):
-
-        total_difference = self.initial_difference()
-        new_difference = self.current_difference(current, goal)
-        all_closer = []
-        for i in range(0, len(current.ee1_angles)):
-            all_closer.append(0)
-
-        for i in range(len(total_difference)):
-            if total_difference[i] < 0:
-                if new_difference[i] > total_difference[i]:
-                    all_closer[i] = 1
-                else:
-                    all_closer[i] = 0
-
-            elif total_difference[i] > 0:
-                if new_difference[i] < total_difference[i]:
-                    all_closer[i] = 1
-                else:
-                    all_closer[i] = 0
-
-        goal_state = []  # the goal state is when all angles are closer [1, 1, 1]
-        for i in range(0, len(current.ee1_angles)):
-            goal_state.append(1)
-
-        return all_closer == goal_state  # return bool whether all closer == goal state
-
     def interpolate_path(self, path):
+        """
+        A method which produces intermediary samples between the start and goal config,
+        each intermediate config < 1 primitive step from the next and last.
+        :param path: the list containing the two configurations.
+        :return: A list of configurations from the start to the goal.
+        """
 
         steps = []
         for i in range(len(path) - 1):
@@ -207,15 +136,15 @@ class GraphNode:
                 d_angles = [config2.ee1_angles[i].in_radians() - config1.ee1_angles[i].in_radians() for i in range(self.spec.num_segments)]
                 make_config = make_robot_config_from_ee1
             else:
-                raise Exception("Invalid configs given to interpolate")
+                raise Exception("Invalid configs given.")
 
             d_lengths = [config2.lengths[i] - config1.lengths[i] for i in range(self.spec.num_segments)]
-            n_steps = max(math.ceil(max([abs(da) for da in d_angles]) / self.spec.PRIMITIVE_STEP),
+            num_steps = max(math.ceil(max([abs(da) for da in d_angles]) / self.spec.PRIMITIVE_STEP),
                           math.ceil(max([abs(dl) for dl in d_lengths]) / self.spec.PRIMITIVE_STEP)) + 1
-            delta_angles = [d_angles[i] / n_steps for i in range(self.spec.num_segments)]
-            delta_lengths = [d_lengths[i] / n_steps for i in range(self.spec.num_segments)]
+            delta_angles = [d_angles[i] / num_steps for i in range(self.spec.num_segments)]
+            delta_lengths = [d_lengths[i] / num_steps for i in range(self.spec.num_segments)]
 
-            for i in range(n_steps):
+            for i in range(num_steps):
                 angles = [base_angles[j] + (delta_angles[j] * (i + 1)) for j in range(self.spec.num_segments)]
                 lengths = [config1.lengths[j] + (delta_lengths[j] * (i + 1)) for j in range(self.spec.num_segments)]
                 c = make_config(x1, y1, angles, lengths, ee1_grappled, ee2_grappled)
@@ -223,38 +152,14 @@ class GraphNode:
 
         return steps
 
-
-    def self_collision_check(self, config):
-        """
-        A method which checks whether any segment of the robot configuration has any
-        collisions with another segment of itself.
-        itself.
-        :param config: the robot configuration which is checked. 
-        :return: True if there is no collision, False otherwise.
-        """
-
-        return test_self_collision(config, self.spec)
-
-    def path_collision_check(self, config1, config2):
-
-        route = self.interpolate_path([config1, config2])
-
-        result = True
-        for edge in route:
-            test_col = test_obstacle_collision(edge, self.spec, self.obstacles)
-            if not test_col:
-                result = False
-
-        return result
     
     def path_check(self, config1, config2):
         """
         Return true for a valid path, false otherwise.
-        :param c1: Config1 
-        :param c2: Config2
+        :param config1: Configuration 1
+        :param config2: Configuration 2
         :return: True or False
         """
-
         if config1.ee1_grappled and config2.ee1_grappled and \
                 point_is_close(config1.points[0][0], config1.points[0][1], config2.points[0][0], config2.points[0][1],
                                self.spec.TOLERANCE):
@@ -266,39 +171,44 @@ class GraphNode:
                         range(self.spec.num_segments)]
             make_config = make_robot_config_from_ee1
         else:
-            raise Exception("Invalid configs given to interpolate")
+            raise Exception("Invalid configs given.")
 
         d_lengths = [config2.lengths[i] - config1.lengths[i] for i in range(self.spec.num_segments)]
-        n_steps = max(math.ceil(max([abs(da) for da in d_angles]) / self.spec.PRIMITIVE_STEP),
+        num_steps = max(math.ceil(max([abs(da) for da in d_angles]) / self.spec.PRIMITIVE_STEP),
                       math.ceil(max([abs(dl) for dl in d_lengths]) / self.spec.PRIMITIVE_STEP)) + 1
-        delta_angles = [d_angles[i] / n_steps for i in range(self.spec.num_segments)]
-        delta_lengths = [d_lengths[i] / n_steps for i in range(self.spec.num_segments)]
+        delta_angles = [d_angles[i] / num_steps for i in range(self.spec.num_segments)]
+        delta_lengths = [d_lengths[i] / num_steps for i in range(self.spec.num_segments)]
 
-        for i in range(n_steps):
+        for i in range(num_steps):
             angles = [base_angles[j] + (delta_angles[j] * (i + 1)) for j in range(self.spec.num_segments)]
             lengths = [config1.lengths[j] + (delta_lengths[j] * (i + 1)) for j in range(self.spec.num_segments)]
-            c = make_config(x1, y1, angles, lengths, ee1_grappled, ee2_grappled)
+            config = make_config(x1, y1, angles, lengths, ee1_grappled, ee2_grappled)
             
-            if not test_environment_bounds(c):
+            if not test_environment_bounds(config):
                 return False
-            if not test_angle_constraints(c, self.spec):
+            if not test_angle_constraints(config, self.spec):
                 return False
-            if not test_length_constraints(c, self.spec):
+            if not test_length_constraints(config, self.spec):
                 return False
-            if not test_self_collision(c, self.spec):
+            if not test_self_collision(config, self.spec):
                 return False
-            if not test_obstacle_collision(c, self.spec, self.obstacles):
+            if not test_obstacle_collision(config, self.spec, self.obstacles):
                 return False
             
         return True
 
     def PRM(self, initial, goal):
-
-        dist_limit = 0.5
-
+        """
+        A PRM algorithm for sampling and connecting successful strategies in order
+        to traverse obstacles.
+        :param initial: The initial node.
+        :param goal: The goal node.
+        :return: A list of successful robot configurations.
+        """
+        dist_limit = 0.35
         if self.dist_between(self.spec.initial, self.spec.goal) < dist_limit:
             if self.path_check(self.spec.initial, self.spec.goal):
-                return [self.spec.initial, self.spec.goal]
+                return [self.spec.initial, self.spec.goal] # if the dist between start and end < dist_limit return
 
         nodes = [initial, goal]
         while True:
@@ -356,19 +266,26 @@ def find_graph_path(spec, init_node):
 
 
 def main(arglist):
-    input_file = arglist[0]
-    output_file = arglist[1]
-    # input_file = "testcases/4g1_m1.txt"
-    # output_file = "testcases/output.txt"
+    # input_file = arglist[0]
+    # output_file = arglist[1]
+    input_file = "testcases/3g1_m2.txt"
+    output_file = "testcases/output.txt"
     spec = ProblemSpec(input_file)
 
     init_node = GraphNode(spec, spec.initial)
     goal_node = GraphNode(spec, spec.goal)
 
     g = GraphNode(spec, spec.goal)
+    # path_plan = []
+    #
+    # for i in range(200):
+    #     c = g.generate_sample()
+    #     path_plan.append(c)
+
+    steps = []
 
     path_plan = g.PRM(init_node, goal_node)
-    write_robot_config_list_to_file(output_file, path_plan)
+    # write_robot_config_list_to_file(output_file, path_plan)
 
     # Code for your main method can go here.
     #
@@ -385,7 +302,7 @@ def main(arglist):
     # You may uncomment this line to launch visualiser once a solution has been found. This may be useful for debugging.
     # *** Make sure this line is commented out when you submit to Gradescope ***
     #
-    # v = Visualiser(spec, path_plan)
+    v = Visualiser(spec, path_plan)
 
 
 if __name__ == '__main__':
